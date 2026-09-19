@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 def get_justdial_rating(place_name, city='Kolkata'):
     search_url = f"https://www.justdial.com/{city}/{place_name.replace(' ', '-')}"
     headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get(search_url, headers=headers)
+    response = requests.get(search_url, headers=headers, timeout=10)
     soup = BeautifulSoup(response.text, 'html.parser')
     rating_tag = soup.find('span', {'class': 'green-box'})
     if rating_tag:

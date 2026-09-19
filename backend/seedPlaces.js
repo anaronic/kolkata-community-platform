@@ -2,11 +2,12 @@ const mongoose = require('mongoose');
 require('dotenv').config({ path: __dirname + '/.env' });
 const Place = require('./models/Place');
 const TinderProfile = require('./models/TinderProfile');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 function fetchExternalRating(place, city = 'Kolkata') {
   try {
-    const output = execSync(`python backend/fetch_justdial_rating.py "${place}" "${city}"`).toString().trim();
+    // execFileSync with an args array: no shell, so no command injection via place/city
+    const output = execFileSync('python', ['backend/fetch_justdial_rating.py', place, city], { timeout: 15000 }).toString().trim();
     const rating = parseFloat(output);
     return isNaN(rating) ? 3.0 : rating;
   } catch {
