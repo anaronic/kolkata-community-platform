@@ -4,36 +4,60 @@ import { useAuth } from '../context/AuthContext';
 function Login() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState(''); // State to store generated OTP
+  const [devOtp, setDevOtp] = useState(''); // only present when the server has EXPOSE_DEV_OTP=true
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
 
-  const handleGetOTP = (e) => {
+  const fullPhone = `+91${phoneNumber}`;
+
+  const postJson = async (path, body) => {
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  };
+
+  const handleGetOTP = async (e) => {
     e.preventDefault();
     if (phoneNumber.length !== 10) {
       alert('Please enter a valid 10-digit phone number');
       return;
     }
-
-    const otp = generateRandomOTP();
-    setGeneratedOtp(otp); // Store the generated OTP
-    setIsVerifying(true);
-    alert(`OTP sent! For demo, use ${otp}`);
+    setIsSubmitting(true);
+    try {
+      const { ok, data } = await postJson('/api/auth/login', { phone: fullPhone });
+      if (!ok) {
+        alert(data.message || 'Could not send OTP. Please try again later.');
+        return;
+      }
+      setDevOtp(data.devOtp || '');
+      setIsVerifying(true);
+    } catch {
+      alert('Network error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const generateRandomOTP = () => {
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log(`Generated OTP: ${otp}`);
-    return otp;
-  };
-
-  const handleVerifyOTP = (e) => {
+  const handleVerifyOTP = async (e) => {
     e.preventDefault();
-    if (otp === generatedOtp) {
-      login();
-    } else {
-      alert('Invalid OTP. Please try again.');
-      setOtp('');
+    setIsSubmitting(true);
+    try {
+      const { ok, data } = await postJson('/api/auth/verify', { phone: fullPhone, otp });
+      if (!ok) {
+        alert(data.message || 'Invalid OTP. Please try again.');
+        setOtp('');
+        return;
+      }
+      login(data.token);
+    } catch {
+      alert('Network error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -112,14 +136,25 @@ function Login() {
                   autoComplete="one-time-code"
                   autoFocus
                 />
+                {devOtp && (
+                  <p className="text-xs text-gray-800">Demo mode: your OTP is {devOtp}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setIsVerifying(false); setOtp(''); setDevOtp(''); }}
+                  className="text-sm text-gray-800 underline"
+                >
+                  Change number / resend OTP
+                </button>
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full bg-orange-600 text-white font-bold p-3 rounded-lg active:bg-orange-700 transition-colors hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+              disabled={isSubmitting}
+              className="w-full bg-orange-600 text-white font-bold p-3 rounded-lg active:bg-orange-700 transition-colors hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-60"
             >
-              {isVerifying ? 'Verify OTP' : 'Get OTP'}
+              {isSubmitting ? 'Please wait...' : isVerifying ? 'Verify OTP' : 'Get OTP'}
             </button>
           </form>
         </div>

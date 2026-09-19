@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { FaHeart, FaTimes, FaStar } from 'react-icons/fa'
+import { useAuth } from '../context/AuthContext'
 
 const DESCRIPTION_LIMIT = 180;
 
 function Tinder() {
+  const { token, logout } = useAuth()
   const [profiles, setProfiles] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -140,15 +142,16 @@ function Tinder() {
     if (profiles[currentIndex]) {
       // Send feedback to backend
       try {
-        await fetch(`/api/tinder-profiles/${profiles[currentIndex]._id}/feedback`, {
+        const res = await fetch(`/api/tinder-profiles/${profiles[currentIndex]._id}/feedback`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             swipeDirection: pendingSwipe?.direction === 1 ? 'right' : 'left',
             feedbackText: feedbackText,
             userStars: userStars
           })
         })
+        if (res.status === 401) { logout(); return }
       } catch (e) {
         // Optionally handle error
       }

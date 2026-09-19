@@ -21,8 +21,8 @@ router.post('/', auth, async (req, res) => {
   res.status(201).json(profile);
 });
 
-// POST /api/tinder-profiles/:id/feedback
-router.post('/:id/feedback', async (req, res) => {
+// POST /api/tinder-profiles/:id/feedback (protected)
+router.post('/:id/feedback', auth, async (req, res) => {
   const { swipeDirection, feedbackText, userStars } = req.body;
   const profileId = req.params.id;
 
